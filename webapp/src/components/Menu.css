@@ -1,0 +1,45 @@
+.menu {
+    position: absolute;
+    width: 80px;
+    box-sizing: border-box;
+    border: 1px solid rgb(255 255 255 / 0.3);
+    background-color: black;
+    font-size: 16px;
+}
+
+.menu.top {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 24px;
+
+    border: unset;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: stretch;
+}
+
+.menu.top>.menu-item {
+    text-align: center;
+}
+
+.menu-item {
+    user-select: none;
+    flex: 0 1 80px;
+    padding: 2px 8px;
+    box-sizing: border-box;
+    height: 24px;
+    text-align: left;
+    cursor: pointer;
+    position: relative;
+}
+
+.menu-item:hover {
+    background-color: rgb(127 127 127 / 0.5);
+}
+
+.menu-item:hover>.menu {
+    display: block!important;
+}
