@@ -13,6 +13,7 @@
     left: 0;
     right: 0;
     height: 24px;
+    width: 100vw;
 
     border: unset;
     display: flex;
@@ -21,13 +22,24 @@
     align-items: stretch;
 }
 
+.menu.top.custom {
+    height: 32px;
+}
+
 .menu.top>.menu-item {
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu.top.custom>.menu-item {
+    height: 32px;
 }
 
 .menu-item {
     user-select: none;
-    flex: 0 1 80px;
+    /* flex: 0 1 80px; */
     padding: 2px 8px;
     box-sizing: border-box;
     height: 24px;

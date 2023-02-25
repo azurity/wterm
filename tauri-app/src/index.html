@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tauri App</title>
+  <script type="module" src="/main.js" defer></script>
+  <style>
+    .titlebar {
+      height: 32px;
+      cursor: move;
+      /* background: #329ea3; */
+      user-select: none;
+      display: flex;
+      justify-content: flex-end;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1;
+    }
+
+    .titlebar-button {
+      cursor: pointer;
+      user-select: none;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 48px;
+      height: 32px;
+    }
+
+    .titlebar-button:hover {
+      background: rgb(127 127 127 / 0.3);
+    }
+    .titlebar-button#titlebar-close:hover {
+      background: red;
+    }
+
+    body {
+      margin: 0;
+      border: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: black;
+    }
+
+    iframe {
+      width: 100vw;
+      height: 100vh;
+      border: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+
+<body>
+  <div data-tauri-drag-region class="titlebar" id="titlebar">
+    <div class="titlebar-button" id="titlebar-minimize">
+      <img src="/assets/minimize.svg" alt="minimize" />
+    </div>
+    <div class="titlebar-button" id="titlebar-maximize">
+      <img id="max-icon" src="/assets/maximize.svg" alt="maximize" />
+    </div>
+    <div class="titlebar-button" id="titlebar-close">
+      <img src="/assets/close.svg" alt="close" />
+    </div>
+  </div>
+  <iframe id="container"></iframe>
+</body>
+
+</html>

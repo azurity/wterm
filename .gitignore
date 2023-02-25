@@ -1,3 +1,4 @@
 /.idea
 /ui/frontend
+/ui/tauri-app
 /dist

@@ -14,6 +14,7 @@ import AuthBox from './components/AuthBox';
 import ConfigBox from './components/ConfigBox';
 import List from './components/List';
 import FS from './components/FS';
+import Settings from './components/Settings';
 
 const groups = {
   tool: {
@@ -35,12 +36,14 @@ const overlayGroups = {
   },
 }
 
-const layoutStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: (2 + 24),
-  left: 2,
-  right: 2,
-  bottom: (2 + 20),
+const layoutStyle = (custom: boolean) => {
+  return {
+    position: 'fixed',
+    top: (2 + (custom ? 32 : 24)),
+    left: 2,
+    right: 2,
+    bottom: (2 + 20),
+  } as React.CSSProperties;
 };
 
 function StatusList(data: StatusItem[]) {
@@ -56,6 +59,10 @@ function StatusList(data: StatusItem[]) {
 }
 
 function App() {
+  const custom = useMemo(() => {
+    let queries = new Map(document.location.search.replace('?', '').split('&').map((it) => [...it.split('='), ''].slice(0, 2)) as [string, string][]);
+    return queries.has('custom');
+  }, []);
   const dockRef = useRef<DockLayout>();
   const overlayDockRef = useRef<DockLayout>();
   const refSets = useMemo<Map<string, React.RefObject<Term>>>(() => new Map(), []);
@@ -162,6 +169,26 @@ function App() {
       addStatus={addStatus}
     />;
     dockRef.current?.updateTab('session_man', newTab);
+  }
+
+  const openSettings = () => {
+    if (overlay > 0) {
+      return;
+    }
+    setOverlay(overlay + 1);
+    overlayDockRef.current?.dockMove({
+      tabs: [{
+        id: 'settings',
+        title: 'settings',
+        content: <Settings />,
+        group: 'common',
+        minHeight: 400,
+        minWidth: 600,
+      }],
+      w: 640,
+      h: 480,
+      y: 120,
+    }, null, 'float');
   }
 
   const cancelConfig = () => {
@@ -425,6 +452,8 @@ function App() {
   return (
     <div>
       <Menu
+        width={80}
+        custom={custom}
         style={{ zIndex: 1 }}
         top={true}
         desc={[
@@ -435,7 +464,11 @@ function App() {
               {
                 title: "new session",
                 action: newConfig,
-              }
+              },
+              {
+                title: "settings",
+                action: openSettings,
+              },
             ]
           },
           {
@@ -463,7 +496,7 @@ function App() {
         loadTab={loadTab}
         onLayoutChange={dockChange}
         groups={groups}
-        style={layoutStyle}
+        style={layoutStyle(custom)}
       />
       <div className='overlay' style={{ visibility: overlay > 0 ? 'visible' : 'hidden' }}>
         <DockLayout
@@ -475,7 +508,7 @@ function App() {
             }
           }}
           groups={overlayGroups}
-          style={layoutStyle}
+          style={layoutStyle(custom)}
         />
       </div>
       <Status list={statusList} />

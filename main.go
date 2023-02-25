@@ -287,7 +287,34 @@ func initMux() http.Handler {
 	return mux
 }
 
+func launch() {
+	if core.MainConfig.Launch != "" {
+		if core.MainConfig.Launch[0] == '$' {
+			// custom command
+			t, err := template.New("launch").Parse(core.MainConfig.Launch)
+			if err == nil {
+				buf := &bytes.Buffer{}
+				_ = t.Execute(buf, "http://localhost:32300/")
+				cmdText, _ := shlex.Split(buf.String())
+				cmd := exec.Command(cmdText[0], cmdText[1:]...)
+				go cmd.Run()
+				return
+			}
+		} else if core.MainConfig.Launch == "@" {
+			// embed tauri
+			tauriFile, err := ui.TauriExecFile()
+			if err == nil {
+				cmd := exec.Command(tauriFile, "--title-padding", "160px", "--app", "http://localhost:32300/?custom")
+				go cmd.Run()
+				return
+			}
+		}
+	}
+	browser.OpenURL("http://localhost:32300/")
+}
+
 func main() {
+	core.MainConfig.Launch = "@"
 	initConfig()
 	mux := initMux()
 	//http.ListenAndServe("localhost:32300", mux)
@@ -298,22 +325,12 @@ func main() {
 		systray.SetTooltip("wterm")
 		show := systray.AddMenuItem("show", "")
 		quit := systray.AddMenuItem("quit", "")
+		launch()
 		go func() {
 			for {
 				select {
 				case <-show.ClickedCh:
-					if core.MainConfig.Launch != "" {
-						t, err := template.New("launch").Parse(core.MainConfig.Launch)
-						if err == nil {
-							buf := &bytes.Buffer{}
-							_ = t.Execute(buf, "http://localhost:32300/")
-							cmdText, _ := shlex.Split(buf.String())
-							cmd := exec.Command(cmdText[0], cmdText[1:]...)
-							go cmd.Run()
-							break
-						}
-					}
-					browser.OpenURL("http://localhost:32300/")
+					launch()
 					break
 				case <-quit.ClickedCh:
 					server.Close()
