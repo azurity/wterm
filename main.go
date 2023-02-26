@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fyne.io/systray"
 	"github.com/azurity/go-onefile"
 	"github.com/google/shlex"
 	"github.com/gorilla/websocket"
@@ -348,10 +347,9 @@ func launch() {
 			}
 		} else if core.MainConfig.Settings.Launch == "@" {
 			// embed tauri
-			tauriFile, err := ui.TauriExecFile()
-			if err == nil {
-				cmd := exec.Command(tauriFile, "--title-padding", "160px", "--app", "http://localhost:32300/?custom")
-				go cmd.Run()
+			cmd := ui.TauriExec()
+			if cmd != nil {
+				go cmd.Start()
 				return
 			}
 		}
@@ -366,26 +364,10 @@ func main() {
 	//http.ListenAndServe("localhost:32300", mux)
 	server := &http.Server{Addr: "localhost:32300", Handler: mux}
 
-	go systray.Run(func() {
-		systray.SetTitle("wterm")
-		systray.SetTooltip("wterm")
-		show := systray.AddMenuItem("show", "")
-		quit := systray.AddMenuItem("quit", "")
-		launch()
-		go func() {
-			for {
-				select {
-				case <-show.ClickedCh:
-					launch()
-					break
-				case <-quit.ClickedCh:
-					server.Close()
-					systray.Quit()
-					break
-				}
-			}
-		}()
-	}, func() {})
+	ui.StartSystray(launch, func() {
+		ui.TauriClear()
+		server.Close()
+	})
 
 	server.ListenAndServe()
 }

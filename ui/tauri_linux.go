@@ -6,18 +6,29 @@ import (
 	"syscall"
 )
 
-func TauriExecFile() (string, error) {
-	if tauriFileName != "" {
-		return tauriFileName, nil
+var tauriFileName string
+var tauriFd int
+
+func tauriExec() (string, error) {
+	if tauriFileName == "" {
+		fd, err := unix.MemfdCreate("", 0)
+		if err != nil {
+			return "", err
+		}
+		_, err = syscall.Write(fd, tauriFile)
+		if err != nil {
+			unix.Close(fd)
+			return "", err
+		}
+		tauriFileName = fmt.Sprintf("/proc/self/fd/%d", fd)
+		tauriFd = fd
 	}
-	fd, err := unix.MemfdCreate("", 0)
-	if err != nil {
-		return "", err
-	}
-	_, err = syscall.Write(fd, tauriFile)
-	if err != nil {
-		return "", err
-	}
-	tauriFileName = fmt.Sprintf("/proc/self/fd/%d", fd)
 	return tauriFileName, nil
+}
+
+func tauriClear() {
+	if tauriFileName != "" {
+		tauriFileName = ""
+		unix.Close(tauriFd)
+	}
 }
