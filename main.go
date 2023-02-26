@@ -329,6 +329,10 @@ func initMux() http.Handler {
 	mux.HandleFunc("/api/download", downloadFileService)
 	mux.HandleFunc("/api/upload", uploadFileService)
 	mux.HandleFunc("/api/settings", settingsService)
+	mux.HandleFunc("/api/launch", func(writer http.ResponseWriter, request *http.Request) {
+		writer.WriteHeader(http.StatusOK)
+		launch()
+	})
 	return mux
 }
 
@@ -358,6 +362,10 @@ func launch() {
 }
 
 func main() {
+	if !core.SingleLock() {
+		http.Get("http://localhost:32300/api/launch")
+		return
+	}
 	initSettings()
 	initConfig()
 	mux := initMux()
@@ -370,4 +378,5 @@ func main() {
 	})
 
 	server.ListenAndServe()
+	core.SingleUnlock()
 }

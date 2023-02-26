@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	fyne.io/systray v1.10.0
+	github.com/Microsoft/go-winio v0.6.0
 	github.com/azurity/go-onefile v0.0.0-20220627085546-ed66fdd30b6c
 	github.com/creack/pty v1.1.18
 	github.com/getlantern/systray v1.2.1
@@ -34,4 +35,6 @@ require (
 	github.com/randall77/makefat v0.0.0-20210315173500-7ddd0e42c844 // indirect
 	github.com/tevino/abool v1.2.0 // indirect
 	golang.org/x/image v0.4.0 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
+	golang.org/x/tools v0.1.12 // indirect
 )
