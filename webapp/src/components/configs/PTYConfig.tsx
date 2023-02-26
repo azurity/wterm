@@ -16,6 +16,7 @@ function PTYConfig(props: Props) {
         type: "PTY",
         name: "",
         cmd: [],
+        termType: 'xterm-256color',
         cache: null as (string | null),
     }, props.data);
     if (data.cache == null) {
@@ -40,6 +41,12 @@ function PTYConfig(props: Props) {
                 <input style={inputStyle} value={data.cache} onInput={(event) => {
                     let ret = { ...data };
                     ret.cache = event.currentTarget.value;
+                    props.onChange(ret);
+                }} />
+                <label>term type</label>
+                <input style={inputStyle} value={data.termType} onInput={(event) => {
+                    let ret = { ...data };
+                    ret.termType = event.currentTarget.value;
                     props.onChange(ret);
                 }} />
             </div>

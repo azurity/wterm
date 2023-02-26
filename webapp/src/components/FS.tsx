@@ -153,7 +153,7 @@ function FS(props: Props) {
     const [cwd, setCwd] = useState<string>("");
     const [cwdText, setCwdText] = useState<string>("");
     const [entries, setEntris] = useState<DirEntry[]>([]);
-    const tableRef = useRef<HTMLPreElement>();
+    const tableRef = useRef<HTMLPreElement>(null);
 
     const updateCwd = (value: string) => {
         value = path.normalize(path.resolve('/', value, '.'));
@@ -238,7 +238,7 @@ function FS(props: Props) {
                     updateCwd(cwd);
                 }}><VscRefresh /></div>
             </div>
-            <pre ref={(elem) => { tableRef.current = elem!; }}>
+            <pre ref={tableRef}>
                 <table>
                     <thead>
                         <tr>

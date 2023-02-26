@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"sync/atomic"
 	"wterm/adapter/pty"
@@ -29,6 +30,16 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+func initSettings() {
+	core.MainConfig.Settings.Launch = "@"
+	core.MainConfig.Settings.FontFamily = "monospace"
+	if runtime.GOOS == "linux" {
+		core.MainConfig.Settings.FontFamily = "'Ubuntu Mono', monospace"
+	} else if runtime.GOOS == "windows" {
+		core.MainConfig.Settings.FontFamily = "consolas, monospace"
+	}
+}
+
 var configFilename string
 
 func initConfig() {
@@ -41,6 +52,38 @@ func initConfig() {
 	}
 	configFilename = home + "/.wterm_sessions"
 	core.LoadConfig(configFilename)
+}
+
+func settingsService(writer http.ResponseWriter, request *http.Request) {
+	writer.Header().Set("Access-Control-Allow-Origin", "*")
+	writer.Header().Set("Access-Control-Allow-Methods", "*")
+	if request.Method == http.MethodGet {
+		data, err := json.Marshal(core.MainConfig.Settings)
+		if err != nil {
+			writer.WriteHeader(http.StatusInternalServerError)
+		} else {
+			writer.Write(data)
+		}
+	} else if request.Method == http.MethodPost {
+		data, err := io.ReadAll(request.Body)
+		if err != nil {
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		settings := core.Settings{}
+		err = json.Unmarshal(data, &settings)
+		if err != nil {
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		core.MainConfig.Settings = settings
+		if configFilename != "" {
+			core.SaveConfig(configFilename)
+		}
+		writer.WriteHeader(http.StatusOK)
+	} else if request.Method != http.MethodOptions {
+		writer.WriteHeader(http.StatusBadRequest)
+	}
 }
 
 func configService(writer http.ResponseWriter, request *http.Request) {
@@ -181,7 +224,9 @@ func layoutService(writer http.ResponseWriter, request *http.Request) {
 			return
 		}
 		core.MainConfig.Layout = string(data)
-		core.SaveConfig(configFilename)
+		if configFilename != "" {
+			core.SaveConfig(configFilename)
+		}
 	} else if request.Method != http.MethodOptions {
 		writer.WriteHeader(http.StatusBadRequest)
 	}
@@ -284,14 +329,15 @@ func initMux() http.Handler {
 	mux.HandleFunc("/api/layout", layoutService)
 	mux.HandleFunc("/api/download", downloadFileService)
 	mux.HandleFunc("/api/upload", uploadFileService)
+	mux.HandleFunc("/api/settings", settingsService)
 	return mux
 }
 
 func launch() {
-	if core.MainConfig.Launch != "" {
-		if core.MainConfig.Launch[0] == '$' {
+	if core.MainConfig.Settings.Launch != "" {
+		if core.MainConfig.Settings.Launch[0] == '$' {
 			// custom command
-			t, err := template.New("launch").Parse(core.MainConfig.Launch)
+			t, err := template.New("launch").Parse(core.MainConfig.Settings.Launch)
 			if err == nil {
 				buf := &bytes.Buffer{}
 				_ = t.Execute(buf, "http://localhost:32300/")
@@ -300,7 +346,7 @@ func launch() {
 				go cmd.Run()
 				return
 			}
-		} else if core.MainConfig.Launch == "@" {
+		} else if core.MainConfig.Settings.Launch == "@" {
 			// embed tauri
 			tauriFile, err := ui.TauriExecFile()
 			if err == nil {
@@ -314,7 +360,7 @@ func launch() {
 }
 
 func main() {
-	core.MainConfig.Launch = "@"
+	initSettings()
 	initConfig()
 	mux := initMux()
 	//http.ListenAndServe("localhost:32300", mux)

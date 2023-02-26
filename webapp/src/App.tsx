@@ -9,7 +9,7 @@ import { standardLayout, walkLayout } from './layout';
 import Term from './components/Term';
 import { Connection, connMan, FSHandle } from './connection';
 import Session from './components/Session';
-import { SessionInfo, StatusItem } from './struct';
+import { SessionInfo, SettingsType, StatusItem } from './struct';
 import AuthBox from './components/AuthBox';
 import ConfigBox from './components/ConfigBox';
 import List from './components/List';
@@ -63,8 +63,8 @@ function App() {
     let queries = new Map(document.location.search.replace('?', '').split('&').map((it) => [...it.split('='), ''].slice(0, 2)) as [string, string][]);
     return queries.has('custom');
   }, []);
-  const dockRef = useRef<DockLayout>();
-  const overlayDockRef = useRef<DockLayout>();
+  const dockRef = useRef<DockLayout>(null);
+  const overlayDockRef = useRef<DockLayout>(null);
   const refSets = useMemo<Map<string, React.RefObject<Term>>>(() => new Map(), []);
 
   const [overlay, setOverlay] = useState<number>(0);
@@ -75,7 +75,6 @@ function App() {
     dockRef.current?.updateTab('status', { id: 'status', title: 'status', content: StatusList(statusList) });
   }, [statusList]);
 
-
   const [newStatus, setNewStatus] = useState<StatusItem>();
   useEffect(() => {
     if (newStatus) {
@@ -85,6 +84,24 @@ function App() {
   const addStatus = (item: StatusItem) => {
     setNewStatus(item);
   }
+
+  const [settings, setSettings] = useState<SettingsType>();
+
+  const refreshSettings = async () => {
+    try {
+      let res = await fetch('http://localhost:32300/api/settings');
+      let data = await res.json();
+      setSettings(data);
+    } catch (err: any) {
+      addStatus({
+        type: 'ERROR',
+        time: Date.now(),
+        info: `[load settings] ${err}`,
+      });
+    }
+  };
+
+  useEffect(() => { refreshSettings(); }, []);
 
   const newTerm = (name: string, conn: number) => {
     let mainpanel = dockRef.current?.find('main');
@@ -97,6 +114,10 @@ function App() {
       content: <Term
         key={key}
         ref={ref}
+        options={{
+          allowProposedApi: true,
+          fontFamily: "PureNerdFont, " + (settings?.fontFamily ?? "monospace")
+        }}
         connId={conn}
         dispose={() => {
           dockRef.current?.dockMove(dockRef.current?.find(key) as TabData, null, 'remove');
@@ -150,7 +171,7 @@ function App() {
               setOverlay(overlay - 1);
             }}
           />,
-          cached: true,
+          // cached: true,
           group: 'common',
         }, null, 'float');
       });
@@ -180,7 +201,30 @@ function App() {
       tabs: [{
         id: 'settings',
         title: 'settings',
-        content: <Settings />,
+        content: <Settings
+          settings={settings!}
+          cancel={() => {
+            dockRef.current?.dockMove(dockRef.current?.find('settings') as TabData, null, 'remove');
+            setOverlay(overlay - 1);
+          }}
+          save={async (data) => {
+            dockRef.current?.dockMove(dockRef.current?.find('settings') as TabData, null, 'remove');
+            setOverlay(overlay - 1);
+            try {
+              let res = await fetch('http://localhost:32300/api/settings', {
+                method: 'POST',
+                body: JSON.stringify(data),
+              });
+              await refreshSettings();
+            } catch (err: any) {
+              addStatus({
+                type: 'ERROR',
+                time: Date.now(),
+                info: `[save settings] ${err}`,
+              });
+            }
+          }}
+        />,
         group: 'common',
         minHeight: 400,
         minWidth: 600,
@@ -491,7 +535,7 @@ function App() {
           },
         ]} />
       <DockLayout
-        ref={(ref) => { dockRef.current = ref ?? undefined; }}
+        ref={dockRef}
         defaultLayout={standardLayout()}
         loadTab={loadTab}
         onLayoutChange={dockChange}
@@ -500,7 +544,7 @@ function App() {
       />
       <div className='overlay' style={{ visibility: overlay > 0 ? 'visible' : 'hidden' }}>
         <DockLayout
-          ref={(ref) => { overlayDockRef.current = ref ?? undefined; }}
+          ref={overlayDockRef}
           defaultLayout={{
             dockbox: {
               mode: "vertical",

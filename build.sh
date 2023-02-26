@@ -12,4 +12,4 @@ npm run build
 cd ..
 cp tauri-app/src-tauri/target/release/tauri-app ui/
 go mod download
-go build -o dist/wterm_$(go env GOOS)_$(go env GOARCH) .
+CGO_ENABLED=0 go build -o dist/wterm_$(go env GOOS)_$(go env GOARCH) .

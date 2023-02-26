@@ -109,9 +109,14 @@ func SaveConfig(filename string) {
 	file.Close()
 }
 
+type Settings struct {
+	Launch     string `json:"launch"`
+	FontFamily string `json:"fontFamily"`
+}
+
 type MainConfigType struct {
-	Layout string `json:"layout"`
-	Launch string `json:"launch"`
+	Layout   string   `json:"layout"`
+	Settings Settings `json:"settings"`
 }
 
 var MainConfig MainConfigType

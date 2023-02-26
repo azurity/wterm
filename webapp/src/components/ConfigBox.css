@@ -45,6 +45,10 @@
     border: 1px solid rgb(127 127 127 / 0.3);
 }
 
+.config-box>.container>.button-group>div:hover {
+    background: rgb(127 127 127 / 0.3);
+}
+
 .config-box>.container>.button-group>.disable {
     pointer-events: none;
     cursor: default;

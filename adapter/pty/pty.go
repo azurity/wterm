@@ -41,7 +41,7 @@ func (ss *ShellSession) Resize(rows int, cols int) {
 }
 
 type Instance struct {
-	CMD []string
+	config Config
 }
 
 func (instance *Instance) Connect(auth chan bool, callback func(question string)) error {
@@ -56,7 +56,16 @@ func (instance *Instance) NewShell(id uint16) core.ShellSession {
 	if err != nil {
 		return nil
 	}
-	cmd := exec.Command(instance.CMD[0], instance.CMD[1:]...)
+	cmd := exec.Command(instance.config.CMD[0], instance.config.CMD[1:]...)
+	if instance.config.TermType != "" {
+		env := append([]string{}, os.Environ()...)
+		for index, it := range env {
+			if len(it) >= 5 && it[:5] == "TERM=" {
+				env[index] = fmt.Sprintf("TERM=%s", instance.config.TermType)
+			}
+		}
+		cmd.Env = env
+	}
 	cmd.Dir = dir
 	ptyFile, err := pty.Start(cmd)
 	if err != nil {
@@ -71,7 +80,8 @@ func (instance *Instance) NewFS(id uint16) core.FilesystemSession {
 
 type Config struct {
 	core.ConfigBase
-	CMD []string `json:"cmd"`
+	CMD      []string `json:"cmd"`
+	TermType string   `json:"termType"`
 }
 
 type ConfigHelper struct {
@@ -98,7 +108,7 @@ func (h *ConfigHelper) StoreConfig(config interface{}) []byte {
 
 func (h *ConfigHelper) New(config interface{}) core.ServeInstance {
 	return &Instance{
-		CMD: config.(*Config).CMD,
+		config: *config.(*Config),
 	}
 }
 

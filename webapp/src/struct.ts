@@ -12,6 +12,7 @@ export interface ConfigBase {
 
 export type ConfigPTY = ConfigBase & {
     cmd: string[];
+    termType: string;
 }
 
 export type ConfigSSH = ConfigBase & {
@@ -26,4 +27,9 @@ export interface StatusItem {
     type: 'INFO' | 'ERROR';
     time: number;
     info: string;
+}
+
+export interface SettingsType {
+    launch: string;
+    fontFamily: string;
 }
