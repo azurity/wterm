@@ -103,7 +103,11 @@ class Term extends React.Component<Props> {
     }
 
     render(): React.ReactNode {
-        return <div ref={this.terminalRef} style={{ height: '100%', background: 'black', boxSizing: 'border-box', padding: 8, paddingRight: 0 }}></div>
+        return (
+            <div style={{ height: '100%', background: 'black', boxSizing: 'border-box', padding: 8, paddingRight: 0 }}>
+                <div ref={this.terminalRef} style={{ height: '100%' }}></div>
+            </div>
+        );
     }
 }
 

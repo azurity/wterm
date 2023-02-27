@@ -380,7 +380,7 @@ func ServeWS(c *websocket.Conn, instance ServeInstance) error {
 							break
 						}
 					}
-				} else if cased, ok := msg.(SizeDesc); ok {
+				} else if cased, ok := msg.(*SizeDesc); ok {
 					if session, ok := sessionSet.Load(ssid); ok {
 						session.(ShellSession).Resize(cased.Rows, cased.Cols)
 					}
