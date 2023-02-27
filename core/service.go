@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 )
@@ -18,7 +19,7 @@ type ShellSession interface {
 	Resize(rows int, cols int)
 }
 
-type FilesystemSession interface {
+type FSBase interface {
 	hackpadfs.FS
 	hackpadfs.OpenFileFS
 	hackpadfs.RenameFS
@@ -26,6 +27,11 @@ type FilesystemSession interface {
 	hackpadfs.ReadDirFS
 	hackpadfs.RemoveFS
 	hackpadfs.MkdirFS
+}
+
+type FilesystemSession interface {
+	FSBase
+	SubVolume(volumeName string) (FSBase, error)
 	Getwd() (string, error)
 	io.Closer
 }
@@ -35,6 +41,7 @@ type ServeInstance interface {
 	Auth(info AuthDesc)
 	NewShell(id uint16) ShellSession
 	NewFS(id uint16) FilesystemSession
+	IsWindowsPath() bool
 }
 
 func shellSessionReader(id uint16, ss ShellSession, conn *WsProtocol) {
@@ -63,10 +70,13 @@ var uploadUrlName = new(uint64)
 
 func ServeWS(c *websocket.Conn, instance ServeInstance) error {
 	conn := &WsProtocol{
-		Conn:      c,
-		Closed:    false,
-		CloseChan: make(chan bool),
+		Conn:       c,
+		Closed:     false,
+		CloseChan:  make(chan bool),
+		sendChan:   make(chan []byte),
+		sendCbChan: make(chan error),
 	}
+	go conn.Start()
 	var err error
 	authChan := make(chan bool)
 	authorized := false
@@ -143,23 +153,23 @@ func ServeWS(c *websocket.Conn, instance ServeInstance) error {
 				var err error
 				if cased, ok := msg.(*NewSessionDesc); ok {
 					if _, ok := sessionSet.Load(ssid); ok {
-						err = conn.NewSession(ssid, false)
+						err = conn.NewSession(ssid, false, false)
 					} else if cased.Type == SESSION_SHELL {
 						ret := instance.NewShell(ssid)
 						if ret != nil {
 							sessionSet.Store(ssid, ret)
 							go shellSessionReader(ssid, ret, conn)
 						}
-						err = conn.NewSession(ssid, ret != nil)
+						err = conn.NewSession(ssid, ret != nil, instance.IsWindowsPath())
 					} else if cased.Type == SESSION_SFTP {
 						ret := instance.NewFS(ssid)
 						if ret != nil {
 							sessionSet.Store(ssid, ret)
 						}
-						err = conn.NewSession(ssid, ret != nil)
+						err = conn.NewSession(ssid, ret != nil, instance.IsWindowsPath())
 					} else {
 						// TODO:
-						err = conn.NewSession(ssid, false)
+						err = conn.NewSession(ssid, false, false)
 					}
 				} else if _, ok := msg.(*CloseSessionDesc); ok {
 					if session, ok := sessionSet.Load(ssid); ok {
@@ -184,9 +194,24 @@ func ServeWS(c *websocket.Conn, instance ServeInstance) error {
 							break
 						case FSOP_READDIR:
 							var list []hackpadfs.DirEntry
-							list, err = session.(FilesystemSession).ReadDir(cased.Args[0])
+							vol, name := formatVolume(cased.Args[0], instance.IsWindowsPath())
+							ssFS := session.(FSBase)
+							if vol != "" {
+								ssFS, err = ssFS.(FilesystemSession).SubVolume(vol)
+								if err != nil {
+									err = conn.Info(InfoDesc{
+										Type: "ERROR",
+										Info: fmt.Sprintf("[FS READDIR] %s", err.Error()),
+									})
+									break
+								}
+							}
+							list, err = ssFS.(FSBase).ReadDir(name)
 							if err != nil {
-								// TODO:
+								err = conn.Info(InfoDesc{
+									Type: "ERROR",
+									Info: fmt.Sprintf("[FS READDIR] %s", err.Error()),
+								})
 							} else {
 								ret := []WebDirEntry{}
 								for _, it := range list {
@@ -202,32 +227,97 @@ func ServeWS(c *websocket.Conn, instance ServeInstance) error {
 							}
 							break
 						case FSOP_MKDIR:
-							err = session.(FilesystemSession).Mkdir(cased.Args[0], 0755)
+							vol, name := formatVolume(cased.Args[0], instance.IsWindowsPath())
+							ssFS := session.(FSBase)
+							if vol != "" {
+								ssFS, err = ssFS.(FilesystemSession).SubVolume(vol)
+								if err != nil {
+									err = conn.Info(InfoDesc{
+										Type: "ERROR",
+										Info: fmt.Sprintf("[FS MKDIR] %s", err.Error()),
+									})
+									break
+								}
+							}
+							err = ssFS.(FSBase).Mkdir(name, 0755)
 							if err != nil {
-								// TODO:
+								err = conn.Info(InfoDesc{
+									Type: "ERROR",
+									Info: fmt.Sprintf("[FS MKDIR] %s", err.Error()),
+								})
 							} else {
 								err = conn.FsOperation(ssid, FSOP_MKDIR, "")
 							}
 							break
 						case FSOP_REMOVE:
-							err = session.(FilesystemSession).Remove(cased.Args[0])
+							vol, name := formatVolume(cased.Args[0], instance.IsWindowsPath())
+							ssFS := session.(FSBase)
+							if vol != "" {
+								ssFS, err = ssFS.(FilesystemSession).SubVolume(vol)
+								if err != nil {
+									err = conn.Info(InfoDesc{
+										Type: "ERROR",
+										Info: fmt.Sprintf("[FS REMOVE] %s", err.Error()),
+									})
+									break
+								}
+							}
+							err = ssFS.(FSBase).Remove(name)
 							if err != nil {
-								// TODO:
+								err = conn.Info(InfoDesc{
+									Type: "ERROR",
+									Info: fmt.Sprintf("[FS REMOVE] %s", err.Error()),
+								})
 							} else {
 								err = conn.FsOperation(ssid, FSOP_REMOVE, "")
 							}
 							break
 						case FSOP_RENAME:
-							err = session.(FilesystemSession).Rename(cased.Args[0], cased.Args[1])
+							vol0, name0 := formatVolume(cased.Args[0], instance.IsWindowsPath())
+							vol1, name1 := formatVolume(cased.Args[1], instance.IsWindowsPath())
+							if vol0 != vol1 {
+								err = conn.Info(InfoDesc{
+									Type: "ERROR",
+									Info: "[FS RENAME] file not in same volume",
+								})
+								break
+							}
+							ssFS := session.(FSBase)
+							if vol0 != "" {
+								ssFS, err = ssFS.(FilesystemSession).SubVolume(vol0)
+								if err != nil {
+									err = conn.Info(InfoDesc{
+										Type: "ERROR",
+										Info: fmt.Sprintf("[FS RENAME] %s", err.Error()),
+									})
+									break
+								}
+							}
+							err = ssFS.(FSBase).Rename(name0, name1)
 							if err != nil {
-								// TODO:
+								err = conn.Info(InfoDesc{
+									Type: "ERROR",
+									Info: fmt.Sprintf("[FS RENAME] %s", err.Error()),
+								})
 							} else {
 								err = conn.FsOperation(ssid, FSOP_RENAME, "")
 							}
 							break
 						case FSOP_DOWNLOAD_FILE:
+							vol, name := formatVolume(cased.Args[0], instance.IsWindowsPath())
+							ssFS := session.(FSBase)
+							if vol != "" {
+								ssFS, err = ssFS.(FilesystemSession).SubVolume(vol)
+								if err != nil {
+									err = conn.Info(InfoDesc{
+										Type: "ERROR",
+										Info: fmt.Sprintf("[FS DOWNLOAD] %s", err.Error()),
+									})
+									break
+								}
+							}
 							var file hackpadfs.File
-							file, err = session.(FilesystemSession).Open(cased.Args[0])
+							file, err = ssFS.(FSBase).Open(name)
 							if err != nil {
 								err = conn.FsOperation(ssid, FSOP_DOWNLOAD_FILE, []string{"", ""})
 							} else {
@@ -238,9 +328,21 @@ func ServeWS(c *websocket.Conn, instance ServeInstance) error {
 							}
 							break
 						case FSOP_UPLOAD_FILE:
+							vol, name := formatVolume(cased.Args[0], instance.IsWindowsPath())
+							ssFS := session.(FSBase)
+							if vol != "" {
+								ssFS, err = ssFS.(FilesystemSession).SubVolume(vol)
+								if err != nil {
+									err = conn.Info(InfoDesc{
+										Type: "ERROR",
+										Info: fmt.Sprintf("[FS UPLOAD] %s", err.Error()),
+									})
+									break
+								}
+							}
 							if cased.Args[1] == "selected" {
 								var file hackpadfs.File
-								file, err := session.(FilesystemSession).OpenFile(cased.Args[0], os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
+								file, err := ssFS.(FSBase).OpenFile(name, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
 								if err != nil {
 									err = conn.FsOperation(ssid, FSOP_UPLOAD_FILE, []string{""})
 									break
@@ -261,8 +363,8 @@ func ServeWS(c *websocket.Conn, instance ServeInstance) error {
 											// TODO:
 											continue
 										}
-										aim := path.Join(cased.Args[0], path.Base(file))
-										writer, err := session.(FilesystemSession).OpenFile(aim, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
+										aim := path.Join(name, path.Base(file))
+										writer, err := ssFS.(FSBase).OpenFile(aim, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
 										if err != nil {
 											// TODO:
 											continue
@@ -298,6 +400,7 @@ func ServeWS(c *websocket.Conn, instance ServeInstance) error {
 		value.(io.Closer).Close()
 		return true
 	})
+	conn.Release()
 	return nil
 }
 
@@ -306,4 +409,17 @@ type WebDirEntry struct {
 	Dir     bool   `json:"dir"`
 	ModTime int64  `json:"modTime"`
 	Perm    int    `json:"perm"`
+}
+
+func formatVolume(path string, isWindowsPath bool) (string, string) {
+	if isWindowsPath {
+		volume := filepath.VolumeName(path)
+		if volume == path {
+			path = "."
+		} else if volume != "" {
+			path = path[len(volume)+1:]
+		}
+		return volume, path
+	}
+	return "", path
 }

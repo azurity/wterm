@@ -2,3 +2,4 @@
 /ui/frontend
 /ui/tauri-app
 /dist
+*.syso

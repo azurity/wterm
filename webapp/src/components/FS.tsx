@@ -149,6 +149,7 @@ function EntryItem({ it, cwd, updateCwd, handle }: EntryItemProps) {
     );
 }
 
+// TODO: better path format for windows py handle.conn.IsWindowsPath
 function FS(props: Props) {
     const [cwd, setCwd] = useState<string>("");
     const [cwdText, setCwdText] = useState<string>("");

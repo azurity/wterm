@@ -135,6 +135,10 @@ func (instance *Instance) NewFS(id uint16) core.FilesystemSession {
 	return &FilesystemSession{client}
 }
 
+func (*Instance) IsWindowsPath() bool {
+	return false
+}
+
 type ShellSession struct {
 	session *ssh.Session
 	reader  io.Reader
@@ -264,6 +268,11 @@ func (ss *FilesystemSession) Remove(name string) error {
 func (ss *FilesystemSession) Mkdir(name string, perm hackpadfs.FileMode) error {
 	name = pathProc(name)
 	return ss.client.Mkdir(name)
+}
+
+func (ss *FilesystemSession) SubVolume(volumeName string) (core.FSBase, error) {
+	// TODO: maybe return error?
+	return ss, nil
 }
 
 func (ss *FilesystemSession) Getwd() (string, error) {

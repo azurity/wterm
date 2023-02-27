@@ -47,3 +47,7 @@ input:focus {
   border: 0;
   outline: unset;
 }
+
+* {
+  line-height: 1;
+}

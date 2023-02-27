@@ -72,6 +72,7 @@ export class Connection extends typedEventTarget {
     private sessionTotal: number = 0;
     sessionCount: number = 0;
     sftphandles = new Map<number, FSHandle>();
+    isWindowsPath = false;
 
     private disposer: () => void;
 
@@ -112,6 +113,9 @@ export class Connection extends typedEventTarget {
                 this.dispatchEvent(new DataEvent<string>(MsgType[MsgType.auth], view[1], this.decoder.decode(data)));
                 break;
             case MsgType.new_session:
+                if (new Uint8Array(data)[1] != 0) {
+                    this.isWindowsPath = true;
+                }
                 let result = new Uint8Array(data)[0] != 0;
                 this.dispatchEvent(new DataEvent<boolean>(MsgType[MsgType.new_session], view[1], result));
                 if (!result) {

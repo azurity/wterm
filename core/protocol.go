@@ -64,8 +64,17 @@ type SizeDesc struct {
 
 type WsProtocol struct {
 	*websocket.Conn
-	CloseChan chan bool
-	Closed    bool
+	CloseChan  chan bool
+	Closed     bool
+	sendChan   chan []byte
+	sendCbChan chan error
+	release    chan bool
+}
+
+func (c *WsProtocol) Release() {
+	if c.release != nil {
+		c.release <- true
+	}
 }
 
 func (c *WsProtocol) testClose(err error) {
@@ -111,12 +120,34 @@ func (c *WsProtocol) Recv() (uint16, interface{}, error) {
 	}
 }
 
+func (c *WsProtocol) Start() {
+	c.release = make(chan bool)
+	for {
+		buffer := <-c.sendChan
+		err := c.WriteMessage(websocket.BinaryMessage, buffer)
+		c.testClose(err)
+		c.sendCbChan <- err
+		if c.Closed {
+			for {
+				select {
+				case <-c.sendChan:
+					c.sendCbChan <- err
+				case <-c.release:
+					return
+				}
+			}
+		}
+	}
+}
+
 func (c *WsProtocol) send(op uint16, ssid uint16, data []byte) error {
 	buffer := make([]byte, 4)
 	binary.LittleEndian.PutUint16(buffer, op)
 	binary.LittleEndian.PutUint16(buffer[2:], ssid)
 	buffer = append(buffer, data...)
-	err := c.WriteMessage(websocket.BinaryMessage, buffer)
+	//err := c.WriteMessage(websocket.BinaryMessage, buffer)
+	c.sendChan <- buffer
+	err := <-c.sendCbChan
 	c.testClose(err)
 	return err
 }
@@ -125,10 +156,13 @@ func (c *WsProtocol) Auth(question string) error {
 	return c.send(PROTOCOL_AUTH, 0, []byte(question))
 }
 
-func (c *WsProtocol) NewSession(ssid uint16, success bool) error {
+func (c *WsProtocol) NewSession(ssid uint16, success bool, isWindowsPath bool) error {
 	buffer := []byte{0, 0}
 	if success {
 		buffer[0] = 1
+	}
+	if isWindowsPath {
+		buffer[1] = 1
 	}
 	return c.send(PROTOCOL_NEW_SESSION, ssid, buffer)
 }

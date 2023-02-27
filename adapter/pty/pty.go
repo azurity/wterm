@@ -3,41 +3,33 @@ package pty
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/creack/pty"
 	hos "github.com/hack-pad/hackpadfs/os"
 	"log"
 	"os"
-	"os/exec"
+	"path/filepath"
+	"runtime"
 	"wterm/core"
 )
-
-type ShellSession struct {
-	*os.File
-	cmd *exec.Cmd
-}
-
-func (ss *ShellSession) Close() error {
-	ss.cmd.Process.Kill()
-	return ss.File.Close()
-}
 
 type FilesystemSession struct {
 	hos.FS
 }
 
+func (ss *FilesystemSession) SubVolume(volumeName string) (core.FSBase, error) {
+	f, err := ss.FS.SubVolume(volumeName)
+	return f.(core.FSBase), err
+}
+
 func (ss *FilesystemSession) Getwd() (string, error) {
-	return os.UserHomeDir()
+	path, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.ToSlash(path), nil
 }
 
 func (ss *FilesystemSession) Close() error {
 	return nil
-}
-
-func (ss *ShellSession) Resize(rows int, cols int) {
-	pty.Setsize(ss.File, &pty.Winsize{
-		Rows: uint16(rows),
-		Cols: uint16(cols),
-	})
 }
 
 type Instance struct {
@@ -51,31 +43,12 @@ func (instance *Instance) Connect(auth chan bool, callback func(question string)
 
 func (instance *Instance) Auth(info core.AuthDesc) {}
 
-func (instance *Instance) NewShell(id uint16) core.ShellSession {
-	dir, err := os.UserHomeDir()
-	if err != nil {
-		return nil
-	}
-	cmd := exec.Command(instance.config.CMD[0], instance.config.CMD[1:]...)
-	if instance.config.TermType != "" {
-		env := append([]string{}, os.Environ()...)
-		for index, it := range env {
-			if len(it) >= 5 && it[:5] == "TERM=" {
-				env[index] = fmt.Sprintf("TERM=%s", instance.config.TermType)
-			}
-		}
-		cmd.Env = env
-	}
-	cmd.Dir = dir
-	ptyFile, err := pty.Start(cmd)
-	if err != nil {
-		return nil
-	}
-	return &ShellSession{ptyFile, cmd}
-}
-
 func (instance *Instance) NewFS(id uint16) core.FilesystemSession {
 	return &FilesystemSession{*hos.NewFS()}
+}
+
+func (*Instance) IsWindowsPath() bool {
+	return runtime.GOOS == "windows"
 }
 
 type Config struct {

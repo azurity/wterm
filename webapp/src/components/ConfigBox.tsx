@@ -32,7 +32,7 @@ function ConfigBox(props: Props) {
 
     const select = (item: ListItem) => {
         setData({});
-        setType(item.key);
+        setType(item.title);
     }
 
     return (

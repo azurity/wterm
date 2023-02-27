@@ -5,6 +5,7 @@ go 1.18
 require (
 	fyne.io/systray v1.10.0
 	github.com/Microsoft/go-winio v0.6.0
+	github.com/azurity/go-conpty v0.0.0-20230227093542-0e9715f9d5ad
 	github.com/azurity/go-onefile v0.0.0-20220627085546-ed66fdd30b6c
 	github.com/creack/pty v1.1.18
 	github.com/getlantern/systray v1.2.1
