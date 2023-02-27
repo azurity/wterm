@@ -58,7 +58,19 @@ function StatusList(data: StatusItem[]) {
   );
 }
 
+async function loadTermFont(fontFamily: string, descList: { url: string, desc?: FontFaceDescriptors }[]) {
+  for (let desc of descList) {
+    let font = new FontFace(fontFamily, `url(${desc.url})`, desc.desc);
+    await font.load();
+    document.fonts.add(font);
+  }
+}
+
 function App() {
+  useEffect(() => {
+    loadTermFont("PureNerdFont", [{ url: "/PureNerdFont.woff2" }]);
+  }, []);
+
   const custom = useMemo(() => {
     let queries = new Map(document.location.search.replace('?', '').split('&').map((it) => [...it.split('='), ''].slice(0, 2)) as [string, string][]);
     return queries.has('custom');
@@ -103,6 +115,14 @@ function App() {
 
   useEffect(() => { refreshSettings(); }, []);
 
+  useEffect(() => {
+    updateSession();
+    // refSets.forEach((it) => {
+    //   it.current!.terminal.options.fontFamily = "PureNerdFont, " + (settings?.fontFamily ?? "monospace");
+    //   it.current!.terminal.options.fontSize = settings?.fontSize ?? 16;
+    // });
+  }, [settings]);
+
   const newTerm = (name: string, conn: number) => {
     let mainpanel = dockRef.current?.find('main');
     let ref = React.createRef<Term>();
@@ -116,7 +136,8 @@ function App() {
         ref={ref}
         options={{
           allowProposedApi: true,
-          fontFamily: "PureNerdFont, " + (settings?.fontFamily ?? "monospace")
+          fontFamily: "PureNerdFont, " + (settings?.fontFamily ?? "monospace"),
+          fontSize: settings?.fontSize ?? 16,
         }}
         connId={conn}
         dispose={() => {

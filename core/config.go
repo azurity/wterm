@@ -112,6 +112,7 @@ func SaveConfig(filename string) {
 type Settings struct {
 	Launch     string `json:"launch"`
 	FontFamily string `json:"fontFamily"`
+	FontSize   int    `json:"fontSize"`
 }
 
 type MainConfigType struct {

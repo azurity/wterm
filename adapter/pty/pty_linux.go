@@ -32,10 +32,11 @@ func (instance *Instance) NewShell(id uint16) core.ShellSession {
 	}
 	cmd := exec.Command(instance.config.CMD[0], instance.config.CMD[1:]...)
 	if instance.config.TermType != "" {
-		env := append([]string{}, os.Environ()...)
+		termStr := fmt.Sprintf("TERM=%s", instance.config.TermType)
+		env := append([]string{termStr}, os.Environ()...)
 		for index, it := range env {
 			if len(it) >= 5 && it[:5] == "TERM=" {
-				env[index] = fmt.Sprintf("TERM=%s", instance.config.TermType)
+				env[index] = termStr
 			}
 		}
 		cmd.Env = env

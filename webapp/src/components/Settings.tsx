@@ -12,6 +12,7 @@ function Settings(props: Props) {
     const [launch, setLaunch] = useState<string>(props.settings.launch == "" ? "" : props.settings.launch.slice(1));
     const [launchType, setLaunchType] = useState<string>(props.settings.launch.slice(0, 1));
     const fontRef = useRef<HTMLInputElement>(null);
+    const fontSizeRef = useRef<HTMLInputElement>(null);
     return (
         <div className="settings">
             <div className="container">
@@ -26,15 +27,6 @@ function Settings(props: Props) {
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                    }} onChange={(event) => {
-                        // let val = (event.target as HTMLInputElement).value;
-                        // if (val == "borderless") {
-                        //     setLaunchType("@");
-                        // } else if (val == "default") {
-                        //     setLaunchType("");
-                        // } else if (val == "custom") {
-                        //     setLaunchType("$");
-                        // }
                     }}>
                         <input type="radio" checked={launchType == "@"} onChange={() => { setLaunchType("@"); }} name="launchType" value="borderless" id="launch-type-borderless"></input><label htmlFor="launch-type-borderless" style={{ flexGrow: 1, textAlign: 'start' }}>borderless</label>
                         <input type="radio" checked={launchType == ""} onChange={() => { setLaunchType(""); }} name="launchType" value="default" id="launch-type-default"></input><label htmlFor="launch-type-default" style={{ flexGrow: 1, textAlign: 'start' }}>system browser</label>
@@ -46,6 +38,8 @@ function Settings(props: Props) {
                     }} />
                     <label>font family</label>
                     <input ref={fontRef} defaultValue={props.settings.fontFamily} />
+                    <label>font size</label>
+                    <input ref={fontSizeRef} defaultValue={props.settings.fontSize} type="number" />
                 </div>
                 <div className="button-group">
                     <div onClick={props.cancel}>cancel</div>
@@ -53,6 +47,7 @@ function Settings(props: Props) {
                         props.save({
                             launch: launchType == "$" ? (launchType + launch) : launchType,
                             fontFamily: fontRef.current?.value ?? "",
+                            fontSize: Math.max(4, Math.min(1024, parseInt(fontSizeRef.current?.value ?? "16") ?? 16)),
                         });
                     }}>save</div>
                 </div>

@@ -7,6 +7,7 @@ import (
 	"github.com/google/shlex"
 	"github.com/gorilla/websocket"
 	"github.com/hack-pad/hackpadfs"
+	"github.com/ncruces/zenity"
 	"github.com/pkg/browser"
 	"html/template"
 	"io"
@@ -37,6 +38,7 @@ func initSettings() {
 	} else if runtime.GOOS == "windows" {
 		core.MainConfig.Settings.FontFamily = "consolas, monospace"
 	}
+	core.MainConfig.Settings.FontSize = 16
 }
 
 var configFilename string
@@ -151,6 +153,9 @@ func configService(writer http.ResponseWriter, request *http.Request) {
 				Full: full,
 			})
 			core.ConfigLock.Unlock()
+			if configFilename != "" {
+				core.SaveConfig(configFilename)
+			}
 			writer.WriteHeader(http.StatusOK)
 		} else {
 			id, err := strconv.ParseUint(request.URL.Query().Get("id"), 10, 64)
@@ -168,6 +173,9 @@ func configService(writer http.ResponseWriter, request *http.Request) {
 					}
 					core.Configs[index].Full = full
 					core.ConfigLock.Unlock()
+					if configFilename != "" {
+						core.SaveConfig(configFilename)
+					}
 					writer.WriteHeader(http.StatusOK)
 					return
 				}
@@ -363,7 +371,10 @@ func launch() {
 
 func main() {
 	if !core.SingleLock() {
-		http.Get("http://localhost:32300/api/launch")
+		_, err := http.Get("http://localhost:32300/api/launch")
+		if err != nil {
+			zenity.Info("Cannot get lock file.")
+		}
 		return
 	}
 	initSettings()

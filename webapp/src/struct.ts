@@ -32,4 +32,5 @@ export interface StatusItem {
 export interface SettingsType {
     launch: string;
     fontFamily: string;
+    fontSize: number;
 }
