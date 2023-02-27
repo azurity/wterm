@@ -3,6 +3,9 @@ package ui
 import (
 	_ "embed"
 	"fyne.io/systray"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 //go:embed icon.png
@@ -15,6 +18,8 @@ func StartSystray(launchFn func(), closeFn func()) {
 		systray.SetTooltip("wterm")
 		show := systray.AddMenuItem("show", "")
 		quit := systray.AddMenuItem("quit", "")
+		sig := make(chan os.Signal)
+		signal.Notify(sig, syscall.SIGTERM, os.Interrupt, os.Kill)
 		go func() {
 			for {
 				select {
@@ -22,6 +27,10 @@ func StartSystray(launchFn func(), closeFn func()) {
 					launchFn()
 					break
 				case <-quit.ClickedCh:
+					systray.Quit()
+					closeFn()
+					break
+				case <-sig:
 					systray.Quit()
 					closeFn()
 					break
