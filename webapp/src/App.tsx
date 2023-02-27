@@ -81,7 +81,27 @@ function App() {
 
   const [overlay, setOverlay] = useState<number>(0);
 
+  const [overlayDelta, setOverlayDelta] = useState<number>(0);
+  useEffect(() => {
+    setOverlay(overlay + overlayDelta);
+    setOverlayDelta(0);
+  }, [overlayDelta]);
+  const overlayInc = () => {
+    setOverlayDelta(1);
+  };
+  const overlayDec = () => {
+    setOverlayDelta(-1);
+  };
+
   const [statusList, setStatusList] = useState<StatusItem[]>([]);
+
+  useEffect(() => {
+    window.addEventListener("resize", () => {
+      refSets.forEach((it) => {
+        it.current?.resize();
+      });
+    });
+  }, []);
 
   useEffect(() => {
     dockRef.current?.updateTab('status', { id: 'status', title: 'status', content: StatusList(statusList) });
@@ -174,7 +194,7 @@ function App() {
       });
       connMan.set(info.id, conn);
       conn.addEventListener('auth', (event) => {
-        setOverlay(overlay + 1);
+        overlayInc();
         overlayDockRef.current?.dockMove({
           id: `auth-${info.id}`,
           title: `${event.data} <${info.name}>`,
@@ -182,14 +202,14 @@ function App() {
             secret={event.data == 'password'}
             submit={(password) => {
               overlayDockRef.current?.dockMove(overlayDockRef.current.find(`auth-${info.id}`) as TabData, null, 'remove');
-              setOverlay(overlay - 1);
+              overlayDec();
               conn.auth(event.data, password, false);
             }}
             cancel={() => {
               let key = `term-${info.id}-0`;
               dockRef.current?.dockMove(dockRef.current?.find(key) as TabData, null, 'remove');
               // refSets.delete(key);
-              setOverlay(overlay - 1);
+              overlayDec();
             }}
           />,
           // cached: true,
@@ -217,7 +237,7 @@ function App() {
     if (overlay > 0) {
       return;
     }
-    setOverlay(overlay + 1);
+    overlayInc();
     overlayDockRef.current?.dockMove({
       tabs: [{
         id: 'settings',
@@ -226,11 +246,11 @@ function App() {
           settings={settings!}
           cancel={() => {
             dockRef.current?.dockMove(dockRef.current?.find('settings') as TabData, null, 'remove');
-            setOverlay(overlay - 1);
+            overlayDec();
           }}
           save={async (data) => {
             dockRef.current?.dockMove(dockRef.current?.find('settings') as TabData, null, 'remove');
-            setOverlay(overlay - 1);
+            overlayDec();
             try {
               let res = await fetch('http://localhost:32300/api/settings', {
                 method: 'POST',
@@ -258,14 +278,14 @@ function App() {
 
   const cancelConfig = () => {
     overlayDockRef.current?.dockMove(overlayDockRef.current.find('config') as TabData, null, 'remove');
-    setOverlay(overlay - 1);
+    overlayDec();
   }
 
   const openConfig = (id: number, data: any) => {
     if (overlay > 0) {
       return;
     }
-    setOverlay(overlay + 1);
+    overlayInc();
     overlayDockRef.current?.dockMove({
       tabs: [{
         id: 'config',
