@@ -3,6 +3,7 @@ import List, { ListItem } from "./List";
 import "./ConfigBox.css";
 import SSHConfig, { checkSSH, formatSSH } from "./configs/SSHConfig";
 import PTYConfig, { checkPTY, formatPTY } from "./configs/PTYConfig";
+import SerialConfig, { checkSerial, formatSerial } from "./configs/SerialConfig";
 
 interface Props {
     infoId: number;
@@ -22,6 +23,7 @@ interface ConfigDetailType {
 const ConfigDetail: [string, ConfigDetailType][] = [
     ["PTY", { Component: PTYConfig, check: checkPTY, format: formatPTY }],
     ["ssh", { Component: SSHConfig, check: checkSSH, format: formatSSH }],
+    ["serial", { Component: SerialConfig, check: checkSerial, format: formatSerial }],
 ];
 
 const ConfigDetailMap = new Map([["", { Component: () => <div></div>, check: () => false, format: (data) => data }], ...ConfigDetail]);

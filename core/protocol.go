@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"github.com/azurity/xmodem-go"
 	"github.com/gorilla/websocket"
 	"net"
 )
@@ -15,6 +16,7 @@ const (
 	PROTOCOL_TERM_DATA
 	PROTOCOL_FS_OPERATION
 	PROTOCOL_INFO
+	PROTOCOL_MODEM
 	PROTOCOL_RESIZE uint16 = 0x0100
 )
 
@@ -55,6 +57,12 @@ type FsOperationDesc struct {
 type InfoDesc struct {
 	Type string `json:"type"`
 	Info string `json:"info"`
+}
+
+type ModemDesc struct {
+	Direct string         `json:"direct"` // "send"/"recv"
+	Type   string         `json:"type"`   // "x"/"y"
+	Fn     xmodem.ModemFn `json:"fn"`
 }
 
 type SizeDesc struct {
@@ -109,6 +117,10 @@ func (c *WsProtocol) Recv() (uint16, interface{}, error) {
 		return ssid, msg[4:], nil
 	case PROTOCOL_FS_OPERATION:
 		out := &FsOperationDesc{}
+		_ = json.Unmarshal(msg[4:], out)
+		return ssid, out, nil
+	case PROTOCOL_MODEM:
+		out := &ModemDesc{}
 		_ = json.Unmarshal(msg[4:], out)
 		return ssid, out, nil
 	case PROTOCOL_RESIZE:

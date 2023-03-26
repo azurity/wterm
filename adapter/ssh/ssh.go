@@ -201,6 +201,7 @@ func (helper *ConfigHelper) Info(host string, id uint64, config interface{}) cor
 		Name:     cased.Name,
 		URL:      fmt.Sprintf("%s/ws?id=%d", host, id),
 		Protocol: "standard",
+		FixSize:  false,
 	}
 }
 

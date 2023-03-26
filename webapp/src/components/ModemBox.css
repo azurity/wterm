@@ -1,0 +1,48 @@
+.modem-box.container {
+    margin-bottom: 40px;
+    height: calc(100% - 48px);
+    padding: 8px 8px 0 8px;
+}
+
+.modem-box.container input {
+    margin: 0;
+    line-height: 16px;
+    background-color: transparent;
+    color: white;
+    border: 1px solid rgb(127 127 127 / 0.3);
+    outline: unset;
+}
+
+.modem-box.container>.button-group {
+    text-align: center;
+    user-select: none;
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: row;
+    gap: 16px;
+}
+
+.modem-box.container>.button-group>div {
+    width: 60px;
+    height: 24px;
+    cursor: pointer;
+    box-sizing: border-box;
+    border: 1px solid rgb(127 127 127 / 0.3);
+}
+
+.modem-box.container>.button-group>div:hover {
+    background: rgb(127 127 127 / 0.3);
+}
+
+.modem-box>.container>.button-group>.disable {
+    pointer-events: none;
+    cursor: default;
+    opacity: 0.3;
+}
+
+.modem-box.container label {
+    line-height: 16px;
+    text-align: left;
+}

@@ -3,6 +3,7 @@ export interface SessionInfo {
     name: string;
     url: string;
     protocol: 'goTTYd' | 'standard';
+    fixSize: boolean;
 }
 
 export interface ConfigBase {
@@ -21,6 +22,11 @@ export type ConfigSSH = ConfigBase & {
     port: number;
     username: string;
     password: string;
+}
+
+export type ConfigSerial = ConfigBase & {
+    serial: string;
+    rate: number;
 }
 
 export interface StatusItem {

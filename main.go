@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"sync/atomic"
 	"wterm/adapter/pty"
+	"wterm/adapter/serial"
 	"wterm/adapter/ssh"
 	"wterm/core"
 	"wterm/ui"
@@ -46,6 +47,7 @@ var configFilename string
 func initConfig() {
 	core.Helpers["PTY"] = &pty.ConfigHelper{}
 	core.Helpers["ssh"] = &ssh.ConfigHelper{}
+	core.Helpers["serial"] = &serial.ConfigHelper{}
 
 	home, err := os.UserHomeDir()
 	if err != nil {

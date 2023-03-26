@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/azurity/xmodem-go"
 	"github.com/gorilla/websocket"
 	"github.com/hack-pad/hackpadfs"
 	"github.com/ncruces/zenity"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -17,6 +19,40 @@ import (
 type ShellSession interface {
 	io.ReadWriteCloser
 	Resize(rows int, cols int)
+}
+
+type ModemShellSession struct {
+	ss     ShellSession
+	reader io.Reader
+	writer io.Writer
+	modem  *xmodem.Modem
+}
+
+func (m *ModemShellSession) Read(p []byte) (n int, err error) {
+	return m.reader.Read(p)
+}
+
+func (m *ModemShellSession) Write(p []byte) (n int, err error) {
+	return m.writer.Write(p)
+}
+
+func (m *ModemShellSession) Close() error {
+	return m.ss.Close()
+}
+
+func (m *ModemShellSession) Resize(rows int, cols int) {
+	m.ss.Resize(rows, cols)
+}
+
+func wrapModem(session ShellSession) *ModemShellSession {
+	// reset config when use
+	m, r, w := xmodem.NewModem(xmodem.XModemConfig(0), session, session)
+	return &ModemShellSession{
+		ss:     session,
+		reader: r,
+		writer: w,
+		modem:  m,
+	}
 }
 
 type FSBase interface {
@@ -157,6 +193,7 @@ func ServeWS(c *websocket.Conn, instance ServeInstance) error {
 					} else if cased.Type == SESSION_SHELL {
 						ret := instance.NewShell(ssid)
 						if ret != nil {
+							ret = wrapModem(ret)
 							sessionSet.Store(ssid, ret)
 							go shellSessionReader(ssid, ret, conn)
 						}
@@ -378,6 +415,129 @@ func ServeWS(c *websocket.Conn, instance ServeInstance) error {
 								}()
 							}
 							break
+						}
+					}
+				} else if cased, ok := msg.(*ModemDesc); ok {
+					if session, ok := sessionSet.Load(ssid); ok {
+						var conf xmodem.ModemConfig
+						if cased.Type == "x" {
+							conf = xmodem.XModemConfig(cased.Fn)
+						} else if cased.Type == "y" {
+							conf = xmodem.YModemConfig(cased.Fn)
+						}
+						session.(*ModemShellSession).modem.Config = conf
+						if cased.Direct == "send" {
+							go func() {
+								if cased.Type == "y" {
+									paths, err := zenity.SelectFileMultiple(zenity.Title("upload files"))
+									if err != nil {
+										session.(*ModemShellSession).modem.SendBreak()
+										// TODO:
+										return
+									}
+									sFiles := []xmodem.File{}
+									for _, file := range paths {
+										f, err := os.Open(file)
+										if err != nil {
+											session.(*ModemShellSession).modem.SendBreak()
+											// TODO:
+											return
+										}
+										stat, err := f.Stat()
+										if err != nil {
+											session.(*ModemShellSession).modem.SendBreak()
+											f.Close()
+											// TODO:
+											return
+										}
+										sFiles = append(sFiles, xmodem.File{
+											Path:    filepath.Base(file),
+											Length:  stat.Size(),
+											ModTime: stat.ModTime(),
+											Mode:    stat.Mode(),
+											Body:    f,
+										})
+									}
+									err = session.(*ModemShellSession).modem.SendList(sFiles)
+									for _, f := range sFiles {
+										f.Body.(*os.File).Close()
+									}
+									if err != nil {
+										// TODO:
+										return
+									}
+								} else {
+									path, err := zenity.SelectFile(zenity.Title("upload files"))
+									f, err := os.Open(path)
+									if err != nil {
+										session.(*ModemShellSession).modem.SendBreak()
+										// TODO:
+										return
+									}
+									defer f.Close()
+									err = session.(*ModemShellSession).modem.SendBytes(f)
+									if err != nil {
+										// TODO:
+										return
+									}
+								}
+							}()
+						} else {
+							go func() {
+								if cased.Type == "x" {
+									path, err := zenity.SelectFileSave(zenity.Title("download file"))
+									if err != nil {
+										session.(*ModemShellSession).modem.SendBreak()
+										// TODO:
+										return
+									}
+									err = session.(*ModemShellSession).modem.Receive(func(file xmodem.File) {
+										f, err := os.Create(path)
+										if err != nil {
+											session.(*ModemShellSession).modem.SendBreak()
+											io.ReadAll(file.Body)
+											// TODO:
+											return
+										}
+										defer f.Close()
+										io.Copy(f, file.Body)
+									})
+									if err != nil {
+										// TODO:
+										return
+									}
+								} else {
+									path, err := zenity.SelectFile(zenity.Title("download files to..."), zenity.Directory())
+									if err != nil {
+										session.(*ModemShellSession).modem.SendBreak()
+										// TODO:
+										return
+									}
+									err = os.MkdirAll(path, fs.ModePerm)
+									if err != nil {
+										session.(*ModemShellSession).modem.SendBreak()
+										// TODO:
+										return
+									}
+									err = session.(*ModemShellSession).modem.Receive(func(file xmodem.File) {
+										// TODO: better safety filter
+										p := strings.Replace(file.Path, "/", "_", -1)
+										f, err := os.Create(filepath.Join(path, p))
+										if err != nil {
+											session.(*ModemShellSession).modem.SendBreak()
+											io.ReadAll(file.Body)
+											// TODO:
+											return
+										}
+										defer f.Close()
+										io.Copy(f, file.Body)
+									})
+									if err != nil {
+										// TODO:
+										return
+									}
+								}
+							}()
 						}
 					}
 				} else if cased, ok := msg.(*SizeDesc); ok {

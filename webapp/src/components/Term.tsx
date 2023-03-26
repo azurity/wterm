@@ -21,6 +21,7 @@ class Term extends React.Component<Props> {
     unicode11Addon = new Unicode11Addon();
     disposer: () => void;
     created: () => void;
+    fixSize: boolean;
 
     // finalReg = new FinalizationRegistry((ssid: number) => {
     //     if (ssid >= 0) {
@@ -33,7 +34,13 @@ class Term extends React.Component<Props> {
         this.disposer = props.dispose;
         this.created = props.created ?? (() => { });
         this.terminalRef = React.createRef();
-        this.terminal = new Terminal(props.options ?? { allowProposedApi: true });
+        this.fixSize = connMan.get(props.connId)?.fixSzie ?? false;
+        let options = props.options ?? { allowProposedApi: true };
+        if (this.fixSize) {
+            options.cols = 80;
+            options.rows = 24;
+        }
+        this.terminal = new Terminal(options);
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.unicode11Addon);
         this.connId = props.connId;
@@ -58,7 +65,9 @@ class Term extends React.Component<Props> {
                 }
                 this.created();
                 this.terminal.open(this.terminalRef.current!);
-                this.fitAddon.fit();
+                if (!this.fixSize) {
+                    this.fitAddon.fit();
+                }
                 conn?.resize(this.ssId, this.terminal.rows, this.terminal.cols); // ?
             });
             conn.addEventListener("term_data", (event) => {
@@ -94,6 +103,9 @@ class Term extends React.Component<Props> {
 
     resizeHandle: number = 0;
     resize() {
+        if (this.fixSize) {
+            return;
+        }
         if (this.resizeHandle != 0) {
             clearTimeout(this.resizeHandle);
         }

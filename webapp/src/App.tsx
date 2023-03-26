@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import DockLayout, { BoxBase, DockContext, DropDirection, LayoutBase, LayoutData, PanelBase, PanelData, TabBase, TabData } from 'rc-dock';
+import DockLayout, { BoxBase, BoxData, DockContext, DropDirection, LayoutBase, LayoutData, PanelBase, PanelData, TabBase, TabData } from 'rc-dock';
 import "rc-dock/dist/rc-dock-dark.css";
 // import logo from './logo.svg';
 import './App.css';
@@ -15,6 +15,7 @@ import ConfigBox from './components/ConfigBox';
 import List from './components/List';
 import FS from './components/FS';
 import Settings from './components/Settings';
+import ModemBox from './components/ModemBox';
 
 const groups = {
   tool: {
@@ -168,7 +169,9 @@ function App() {
           // try open fs.
           let sftpId = connMan.get(conn)!.newSftp();
           connMan.get(conn)!.sftphandles.set(localIndex, new FSHandle(connMan.get(conn)!, sftpId));
-          updateFS(conn, localIndex);
+          setTimeout(() => {
+            updateFS(conn, localIndex);
+          }, 100);
         }}
       />,
       group: 'terminal',
@@ -180,7 +183,7 @@ function App() {
 
   const openSession = (info: SessionInfo) => {
     if (!connMan.has(info.id)) {
-      let conn = new Connection(info.url, info.protocol, () => {
+      let conn = new Connection(info.url, info.protocol, info.fixSize, () => {
         newTerm(info.name, info.id);
       }, () => {
         connMan.delete(info.id);
@@ -534,6 +537,52 @@ function App() {
     loadLayout();
   }, []);
 
+  const modemSend = () => {
+    const fileMan = dockRef.current?.find('file_man') as TabData;
+    const props = (fileMan.content as React.ReactElement).props;
+    const connId = props.connId;
+    const termId = props.termId;
+    openModemDialog(connId, termId, "send");
+  }
+
+  const modemRecv = () => {
+    const fileMan = dockRef.current?.find('file_man') as TabData;
+    const props = (fileMan.content as React.ReactElement).props;
+    const connId = props.connId;
+    const termId = props.termId;
+    openModemDialog(connId, termId, "recv");
+  }
+
+  const cancelModemDialog = () => {
+    overlayDockRef.current?.dockMove(overlayDockRef.current.find('modem') as TabData, null, 'remove');
+    overlayDec();
+  }
+
+  const openModemDialog = (connId: number, termId: number, type: "send"|"recv") => {
+    if (overlay > 0) {
+      return;
+    }
+    overlayInc();overlayDockRef.current?.dockMove({
+      tabs: [{
+        id: 'modem',
+        title: 'modem',
+        content: <ModemBox
+          connId={connId}
+          termId={termId}
+          direct={type}
+          fin={cancelModemDialog}
+        />,
+        // cached: true,
+        group: 'common',
+        minHeight: 400,
+        minWidth: 600,
+      }],
+      w: 640,
+      h: 480,
+      y: 120,
+    }, null, 'float');
+  }
+
   return (
     <div>
       <Menu
@@ -572,6 +621,20 @@ function App() {
                 title: "reset layout",
                 action: resetLayout,
               }
+            ],
+          },
+          {
+            title: "Modem",
+            width: 120,
+            children: [
+              {
+                title: "send file",
+                action: modemSend,
+              },
+              {
+                title: "recv file",
+                action: modemRecv,
+              },
             ],
           },
         ]} />

@@ -19,6 +19,7 @@ type ConnectionInfo struct {
 	Name     string `json:"name"`
 	URL      string `json:"url"`
 	Protocol string `json:"protocol"`
+	FixSize  bool   `json:"fixSize"`
 }
 
 type ConfigHelper interface {

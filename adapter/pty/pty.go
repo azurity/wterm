@@ -92,5 +92,6 @@ func (h *ConfigHelper) Info(host string, id uint64, config interface{}) core.Con
 		Name:     cased.Name,
 		URL:      fmt.Sprintf("%s/ws?id=%d", host, id),
 		Protocol: "standard",
+		FixSize:  false,
 	}
 }

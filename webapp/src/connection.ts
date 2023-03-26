@@ -15,6 +15,7 @@ enum MsgType {
     term_data,
     fs_operation,
     info,
+    modem,
     resize = 0x0100,
 }
 
@@ -31,6 +32,14 @@ enum FSOP {
     rename, // [old,new], boolean
     downloadFile, // [name], string
     uploadFile, // [path,name,<path>], boolean|string
+}
+
+export enum ModemFn {
+    ModemFn1k = 1 << 0,
+    ModemFnCRC = 1 << 1,
+    ModemFnCANCAN = 1 << 2,
+    ModemFnBatch = 1 << 3,
+    ModemFnG = 1 << 4,
 }
 
 export interface FSOPEventType {
@@ -73,14 +82,16 @@ export class Connection extends typedEventTarget {
     sessionCount: number = 0;
     sftphandles = new Map<number, FSHandle>();
     isWindowsPath = false;
+    fixSzie: boolean;
 
     private disposer: () => void;
 
-    constructor(url: string, protocol: 'standard' | 'goTTYd', callback: (ss: Connection) => void, dispose: () => void) {
+    constructor(url: string, protocol: 'standard' | 'goTTYd', fixSize: boolean, callback: (ss: Connection) => void, dispose: () => void) {
         super();
         this.disposer = dispose;
         // console.log('construct', url);
         this.protocol = protocol;
+        this.fixSzie = fixSize;
         this.socket = new WebSocket(url);
         // this.socket.addEventListener('error', (e) => {
         //     console.log(e);
@@ -215,6 +226,14 @@ export class Connection extends typedEventTarget {
         this.send(MsgType.fs_operation, id, JSON.stringify({
             op,
             args,
+        }));
+    }
+
+    modem(id: number, direct: 'send' | 'recv', type: string, fn: ModemFn) {
+        this.send(MsgType.modem, id, JSON.stringify({
+            direct,
+            type,
+            fn,
         }));
     }
 

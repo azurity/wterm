@@ -16,7 +16,7 @@ func TauriExec() *exec.Cmd {
 	if err != nil {
 		return nil
 	}
-	cmd := exec.Command(name, "--title-padding", "160px", "--app", "http://localhost:32300/?custom")
+	cmd := exec.Command(name, "--title-padding", "240px", "--app", "http://localhost:32300/?custom")
 	cmdList = append(cmdList, cmd)
 	return cmd
 }

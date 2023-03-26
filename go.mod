@@ -7,6 +7,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.0
 	github.com/azurity/go-conpty v0.0.0-20230227093542-0e9715f9d5ad
 	github.com/azurity/go-onefile v0.0.0-20220627085546-ed66fdd30b6c
+	github.com/azurity/xmodem-go v0.0.0-20230326022613-0136b927818c
 	github.com/creack/pty v1.1.18
 	github.com/getlantern/systray v1.2.1
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
@@ -15,12 +16,14 @@ require (
 	github.com/ncruces/zenity v0.10.6
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pkg/sftp v1.13.5
+	go.bug.st/serial v1.5.0
 	golang.org/x/crypto v0.6.0
 	golang.org/x/sys v0.5.0
 )
 
 require (
 	github.com/akavel/rsrc v0.10.2 // indirect
+	github.com/creack/goselect v0.1.2 // indirect
 	github.com/dchest/jsmin v0.0.0-20220218165748-59f39799265f // indirect
 	github.com/getlantern/context v0.0.0-20190109183933-c447772a6520 // indirect
 	github.com/getlantern/errors v0.0.0-20190325191628-abdb3e3e36f7 // indirect
