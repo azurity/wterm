@@ -7,7 +7,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.0
 	github.com/azurity/go-conpty v0.0.0-20230227093542-0e9715f9d5ad
 	github.com/azurity/go-onefile v0.0.0-20220627085546-ed66fdd30b6c
-	github.com/azurity/xmodem-go v0.0.0-20230326022613-0136b927818c
+	github.com/azurity/xmodem-go v0.0.0-20230329075330-705b546fe130
 	github.com/creack/pty v1.1.18
 	github.com/getlantern/systray v1.2.1
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
